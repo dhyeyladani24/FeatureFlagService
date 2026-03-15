@@ -30,23 +30,6 @@ This project provides a backend service to manage those feature flags and evalua
 
 ---
 
-## Why this project matters
-
-This project is more meaningful than a simple CRUD app because it includes real backend engineering concepts such as:
-
-- modular architecture
-- controller-service separation
-- feature evaluation logic
-- rollout strategy
-- caching
-- audit-related service layer
-- SQL schema design
-- error-handling middleware
-- reusable utility functions
-
-It reflects the kind of backend thinking that is useful for SDE roles.
-
----
 
 ## Tech Stack
 
