@@ -6,4 +6,4 @@ router.get("/", (req, res) => {
   res.json(getMetrics());
 });
 
-module.exports = router; // ✅ THIS LINE IS CRITICAL
+module.exports = router; 
