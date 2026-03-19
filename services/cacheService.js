@@ -1,13 +1,27 @@
 const redisClient = require("../config/redis");
+const { increment } = require("./metricsService");
 
 const getCacheKey = (name, environment) => {
   return `feature:${environment}:${name}`;
 };
 
 const getFeatureFromCache = async (name, environment) => {
+  console.log("getFeatureFromCache CALLED"); 
+
   const key = getCacheKey(name, environment);
   const data = await redisClient.get(key);
-  return data ? JSON.parse(data) : null;
+
+  console.log("👉 Redis returned:", data); 
+
+  if (data) {
+    console.log("⚡ CACHE HIT");
+    increment("cacheHits");
+    return JSON.parse(data);
+  }
+
+  console.log("CACHE MISS");
+  increment("cacheMisses");
+  return null;
 };
 
 const setFeatureInCache = async (feature) => {
