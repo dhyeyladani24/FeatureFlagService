@@ -7,7 +7,7 @@ const metricsMiddleware = (req, res, next) => {
     return next();
   }
 
-  // ✅ track total requests
+  // track total requests
   increment("totalRequests");
 
   res.on("finish", () => {
