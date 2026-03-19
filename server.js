@@ -17,7 +17,7 @@ app.use(express.json());
 console.log("metricsMiddleware:", typeof metricsMiddleware);
 console.log("metricsRoutes:", typeof metricsRoutes);
 console.log("errorHandler:", typeof errorHandler);
-// ✅ GLOBAL MIDDLEWARE
+// GLOBAL MIDDLEWARE
 
 app.use(rateLimiter);
 app.use(metricsMiddleware);
@@ -26,12 +26,12 @@ app.get("/", (req, res) => {
   res.json({ message: "Feature Flag Service is running" });
 });
 
-// ✅ ROUTES
+// ROUTES
 app.use("/features", featureRoutes);
 app.use("/evaluate", evaluationRoutes);
 app.use("/metrics", metricsRoutes);
 
-// ✅ ERROR HANDLER (always last)
+// ERROR HANDLER (always last)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
