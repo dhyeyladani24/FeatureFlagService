@@ -8,10 +8,6 @@ const metricsMiddleware = (req, res, next) => {
     return next();
   }
 
-<<<<<<< HEAD
-  // track total requests
-=======
->>>>>>> 92cab40 (Improvised Code Structure)
   increment("totalRequests");
 
   res.on("finish", () => {

@@ -24,15 +24,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-<<<<<<< HEAD
-console.log("metricsMiddleware:", typeof metricsMiddleware);
-console.log("metricsRoutes:", typeof metricsRoutes);
-console.log("errorHandler:", typeof errorHandler);
-// GLOBAL MIDDLEWARE
-=======
 
 app.use("/health", healthRoutes);
->>>>>>> 92cab40 (Improvised Code Structure)
 
 app.use(rateLimiter);
 app.use(metricsMiddleware);
@@ -41,18 +34,10 @@ app.get("/", (req, res) => {
   res.json({ message: "Feature Flag Service is running" });
 });
 
-<<<<<<< HEAD
-// ROUTES
-=======
->>>>>>> 92cab40 (Improvised Code Structure)
 app.use("/features", featureRoutes);
 app.use("/evaluate", evaluationRoutes);
 app.use("/metrics", metricsRoutes);
 
-<<<<<<< HEAD
-// ERROR HANDLER (always last)
-=======
->>>>>>> 92cab40 (Improvised Code Structure)
 app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 3000;
