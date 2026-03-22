@@ -2,28 +2,27 @@
 
 REST API for **managing and evaluating feature flags**: **PostgreSQL** as the source of truth, **Redis** for cache-aside reads and sliding-window **rate limiting**, **audit** rows on changes, **Zod** validation, and a deterministic **rollout** model with user/country allowlists.
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Express](https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
-[![Zod](https://img.shields.io/badge/Zod-3.x-3068B7?style=for-the-badge)](https://zod.dev/)
-[![License](https://img.shields.io/badge/License-ISC-blue?style=for-the-badge)](#license)
+[![Zod](https://img.shields.io/badge/Zod-3068B7?style=for-the-badge)](https://zod.dev/)
 
 ---
 
-## Why this pattern matters (industry context)
+## Service Overview
 
 At scale, teams **decouple “deploy” from “release”**: code ships to production continuously, while **feature flags** decide what end users actually see. That is the same idea behind commercial **feature-management** platforms (LaunchDarkly, Split, Unleash, ConfigCat, etc.) and is standard in **progressive delivery**, **SRE**, and **platform engineering**.
 
 | Theme | Why it matters |
 |-------|----------------|
-| **Risk & blast radius** | Turn features off instantly without a rollback deploy; roll out to a **%** of users before full GA. |
+| **Risk & blast radius** | Turn features off instantly without a rollback deploy; roll out to x% of users before full GA. |
 | **Velocity** | Product and engineering iterate without blocking on monolithic release trains. |
 | **Experimentation** | Percentage rollouts and allowlists support A/B-style learning tied to metrics. |
 | **Operational safety** | **Audit** trails and environment-scoped flags align with change-management and debugging in regulated or high-traffic systems. |
 | **Performance & protection** | **Caching** and **rate limiting** mirror how real control planes stay fast and resilient under load. |
 
-This repository is a **focused backend** that implements those building blocks—persistence, evaluation, cache, limits, and audit—so you can discuss the **same concepts** used in production feature-flag systems.
+This repository is a **focused backend** that implements those building blocks—persistence, evaluation, cache, limits, and audit.
 
 ---
 
@@ -46,7 +45,7 @@ Typical usage: services call **`POST /evaluate`** at runtime; operators use **`P
 |------|----------|
 | **CRUD** | Flags keyed by **`name` + `environment`** (unique in DB) |
 | **Evaluation** | Returns `enabled` plus a **`reason`** code (see [Evaluation logic](#evaluation-logic)) |
-| **Redis cache** | Cache-aside for **single-flag GET**; response includes `source: "cache"` or `"database"` |
+| **Redis cache** | Cache aside for **single-flag GET**; response includes `source: "cache"` or `"database"` |
 | **Audit** | `CREATE` / `UPDATE` rows in `audit_logs` with JSONB snapshots |
 | **Rate limit** | Per-client sliding window (Redis sorted sets); **`GET /health`** excluded |
 | **Metrics** | In-memory counters (`/metrics`); request middleware skips `/health` and `/metrics` |
