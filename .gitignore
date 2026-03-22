@@ -1,2 +1,5 @@
 node_modules/
 .env
+
+# Optional local notes / interview prep (not published to the remote)
+docs/INTERVIEW.md

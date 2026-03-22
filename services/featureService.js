@@ -5,6 +5,7 @@ const {
   deleteFeatureFromCache,
 } = require("./cacheService");
 const { logAudit } = require("./auditService");
+const { targetsEnvelope, normalizeTargets } = require("../utils/featureTargets");
 
 const createFeature = async (data) => {
   const {
@@ -19,14 +20,20 @@ const createFeature = async (data) => {
   const result = await db.query(
     `INSERT INTO feature_flags
       (name, environment, enabled, rollout_percentage, target_users, target_countries)
-     VALUES ($1, $2, $3, $4, $5, $6)
+     VALUES ($1, $2, $3, $4, ($5::jsonb->'u'), ($5::jsonb->'c'))
      RETURNING *`,
-    [name, environment, enabled, rollout_percentage, target_users, target_countries]
+    [
+      name,
+      environment,
+      enabled,
+      rollout_percentage,
+      targetsEnvelope(target_users, target_countries),
+    ]
   );
 
-  const created = result.rows[0];
+  const created = normalizeTargets(result.rows[0]);
 
-  await setFeatureInCache(created);
+  await setFeatureInCache(created, name, environment);
 
   await logAudit({
     featureName: created.name,
@@ -41,7 +48,9 @@ const createFeature = async (data) => {
 
 const getFeature = async (name, environment) => {
   const cached = await getFeatureFromCache(name, environment);
-  if (cached) return { feature: cached, source: "cache" };
+  if (cached) {
+    return { feature: normalizeTargets(cached), source: "cache" };
+  }
 
   const result = await db.query(
     `SELECT * FROM feature_flags WHERE name = $1 AND environment = $2`,
@@ -50,8 +59,8 @@ const getFeature = async (name, environment) => {
 
   if (result.rows.length === 0) return null;
 
-  const feature = result.rows[0];
-  await setFeatureInCache(feature);
+  const feature = normalizeTargets(result.rows[0]);
+  await setFeatureInCache(feature, name, environment);
 
   return { feature, source: "database" };
 };
@@ -66,7 +75,7 @@ const updateFeature = async (name, environment, updates) => {
     return null;
   }
 
-  const existing = existingResult.rows[0];
+  const existing = normalizeTargets(existingResult.rows[0]);
 
   const updatedValues = {
     enabled:
@@ -89,25 +98,24 @@ const updateFeature = async (name, environment, updates) => {
     `UPDATE feature_flags
      SET enabled = $1,
          rollout_percentage = $2,
-         target_users = $3,
-         target_countries = $4,
+         target_users = ($3::jsonb->'u'),
+         target_countries = ($3::jsonb->'c'),
          updated_at = CURRENT_TIMESTAMP
-     WHERE name = $5 AND environment = $6
+     WHERE name = $4 AND environment = $5
      RETURNING *`,
     [
       updatedValues.enabled,
       updatedValues.rollout_percentage,
-      updatedValues.target_users,
-      updatedValues.target_countries,
+      targetsEnvelope(updatedValues.target_users, updatedValues.target_countries),
       name,
       environment,
     ]
   );
 
-  const updated = result.rows[0];
+  const updated = normalizeTargets(result.rows[0]);
 
   await deleteFeatureFromCache(name, environment);
-  await setFeatureInCache(updated);
+  await setFeatureInCache(updated, name, environment);
 
   await logAudit({
     featureName: updated.name,
@@ -132,14 +140,29 @@ const getAllFeatures = async (environment) => {
   query += ` ORDER BY id DESC`;
 
   const result = await db.query(query, values);
-  return result.rows;
+  return result.rows.map((row) => normalizeTargets(row));
 };
 
-const getAuditLogs = async () => {
-  const result = await db.query(
-    `SELECT * FROM audit_logs ORDER BY changed_at DESC`
+const getAuditLogs = async ({ limit = 50, offset = 0 } = {}) => {
+  const lim = Math.min(500, Math.max(1, Number(limit) || 50));
+  const off = Math.max(0, Number(offset) || 0);
+
+  const countResult = await db.query(
+    `SELECT COUNT(*)::int AS total FROM audit_logs`
   );
-  return result.rows;
+  const total = countResult.rows[0].total;
+
+  const result = await db.query(
+    `SELECT * FROM audit_logs ORDER BY changed_at DESC LIMIT $1 OFFSET $2`,
+    [lim, off]
+  );
+
+  return {
+    data: result.rows,
+    total,
+    limit: lim,
+    offset: off,
+  };
 };
 
 module.exports = {

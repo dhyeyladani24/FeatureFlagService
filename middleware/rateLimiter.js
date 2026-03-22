@@ -1,50 +1,64 @@
 const redisClient = require("../config/redis");
 
-const WINDOW_SIZE = 60; // seconds
-const MAX_REQUESTS = 5;
+/** Read on each request so `dotenv` + `.env` are the source of truth (not `.env.example`). */
+function getWindowSeconds() {
+  const n = Number(process.env.RATE_LIMIT_WINDOW_SECONDS);
+  return Number.isFinite(n) && n > 0 ? n : 60;
+}
 
+function getMaxRequests() {
+  const n = Number(process.env.RATE_LIMIT_MAX_REQUESTS);
+  return Number.isFinite(n) && n > 0 ? n : 100;
+}
+
+const clientKey = (req) => {
+  const headerId = req.headers["x-user-id"];
+  if (headerId !== undefined && headerId !== null && String(headerId).trim() !== "") {
+    return String(headerId).trim();
+  }
+  return req.ip || req.socket?.remoteAddress || "unknown";
+};
+
+/**
+ * Sliding window: drop expired members, count current window, reject without recording
+ * if at capacity, otherwise record this request.
+ */
 const rateLimiter = async (req, res, next) => {
+  if (req.path === "/health") {
+    return next();
+  }
+
+  const WINDOW_SIZE = getWindowSeconds();
+  const MAX_REQUESTS = getMaxRequests();
+
   try {
-    const userId = req.headers["x-user-id"] || req.ip;
+    const userId = clientKey(req);
     const key = `rate_limit:${userId}`;
 
-    const currentTime = Date.now();
-    const windowStart = currentTime - WINDOW_SIZE * 1000;
+    const now = Date.now();
+    const windowStart = now - WINDOW_SIZE * 1000;
 
-    // 🔥 Use Redis transaction (atomic)
-    const multi = redisClient.multi();
+    await redisClient.zRemRangeByScore(key, 0, windowStart);
+    const count = await redisClient.zCard(key);
 
-    // 1. Remove old requests
-    multi.zRemRangeByScore(key, 0, windowStart);
-
-    // 2. Get current count
-    multi.zCard(key);
-
-    // 3. Add new request
-    multi.zAdd(key, {
-      score: currentTime,
-      value: `${currentTime}-${Math.random()}`,
-    });
-
-    // 4. Set expiry
-    multi.expire(key, WINDOW_SIZE);
-
-    const results = await multi.exec();
-
-    const requestCount = results[1]; // zCard result
-
-    console.log(`User: ${userId} | Requests: ${requestCount}`);
-
-    if (requestCount >= MAX_REQUESTS) {
+    if (Number(count) >= MAX_REQUESTS) {
+      res.set("Retry-After", String(WINDOW_SIZE));
       return res.status(429).json({
         message: "Too many requests (rate limited)",
+        retryAfterSeconds: WINDOW_SIZE,
       });
     }
+
+    await redisClient.zAdd(key, {
+      score: now,
+      value: `${now}-${Math.random()}`,
+    });
+    await redisClient.expire(key, WINDOW_SIZE);
 
     next();
   } catch (error) {
     console.error("Rate limiter error:", error.message);
-    next(); // fail-open
+    next();
   }
 };
 

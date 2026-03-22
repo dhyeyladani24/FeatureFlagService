@@ -49,7 +49,7 @@ exports.getAllFeatures = async (req, res, next) => {
   try {
     const { environment } = req.query;
 
-    const features = await featureService.getAllFeatures(environment);
+    const features = await featureService.getAllFeatures(environment ?? undefined);
     res.status(200).json(features);
   } catch (error) {
     next(error);
@@ -58,7 +58,8 @@ exports.getAllFeatures = async (req, res, next) => {
 
 exports.getAuditLogs = async (req, res, next) => {
   try {
-    const logs = await featureService.getAuditLogs();
+    const { limit, offset } = req.query;
+    const logs = await featureService.getAuditLogs({ limit, offset });
     res.status(200).json(logs);
   } catch (error) {
     next(error);

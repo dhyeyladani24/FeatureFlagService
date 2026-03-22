@@ -1,21 +1,7 @@
 const featureService = require("./featureService");
-
-const getDeterministicBucket = (featureName, userId) => {
-  const input = `${featureName}:${userId}`;
-  let hash = 0;
-
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash * 31 + input.charCodeAt(i)) % 100;
-  }
-
-  return Math.abs(hash);
-};
+const { simpleHashToPercentage } = require("../utils/hash");
 
 const evaluateFeature = async ({ featureName, environment, userId, country }) => {
-  if (!featureName || !environment) {
-    throw new Error("featureName and environment are required");
-  }
-
   const result = await featureService.getFeature(featureName, environment);
 
   if (!result || !result.feature) {
@@ -47,7 +33,7 @@ const evaluateFeature = async ({ featureName, environment, userId, country }) =>
   if (
     country &&
     Array.isArray(feature.target_countries) &&
-    feature.target_countries.includes(country)
+    feature.target_countries.includes(country.toUpperCase())
   ) {
     return {
       featureName,
@@ -64,7 +50,7 @@ const evaluateFeature = async ({ featureName, environment, userId, country }) =>
     };
   }
 
-  const bucket = getDeterministicBucket(featureName, userId);
+  const bucket = simpleHashToPercentage(`${featureName}:${userId}`);
   const rolloutPercentage = Number(feature.rollout_percentage) || 0;
 
   if (bucket < rolloutPercentage) {

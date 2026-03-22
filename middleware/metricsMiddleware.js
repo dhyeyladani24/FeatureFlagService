@@ -1,13 +1,17 @@
 const { increment } = require("../services/metricsService");
 
-const IGNORED_ROUTES = ["/metrics"];
+const shouldIgnore = (path) =>
+  path === "/metrics" || path === "/health";
 
 const metricsMiddleware = (req, res, next) => {
-  if (IGNORED_ROUTES.includes(req.path)) {
+  if (shouldIgnore(req.path)) {
     return next();
   }
 
+<<<<<<< HEAD
   // track total requests
+=======
+>>>>>>> 92cab40 (Improvised Code Structure)
   increment("totalRequests");
 
   res.on("finish", () => {
